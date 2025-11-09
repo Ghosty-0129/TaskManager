@@ -1,8 +1,9 @@
-// app/tasks/page.tsx
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AddTaskForm from "./add_task_form";
 import TaskItem from "./task_item";
+
+type Task = { id: string; title: string; completed: boolean };
 
 export default async function TasksPage() {
   const supabase = await createClient();
@@ -10,13 +11,16 @@ export default async function TasksPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: tasks = [], error } = await supabase
+  const { data: tasksRaw, error } = await supabase
     .from("tasks")
-    .select("*")
+    .select("id,title,completed,created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   if (error) return <pre className="p-6">Error: {error.message}</pre>;
+
+  // ✅ Ensure non-null
+  const tasks: Task[] = (tasksRaw ?? []) as Task[];
 
   const total = tasks.length;
   const done  = tasks.filter(t => t.completed).length;
